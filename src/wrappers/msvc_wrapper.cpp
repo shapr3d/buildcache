@@ -214,13 +214,19 @@ std::map<std::string, std::string> msvc_wrapper_t::get_relevant_env_vars() {
 }
 
 std::string msvc_wrapper_t::get_program_id() {
+  const auto& pathToCL = m_args[0];
+  const auto vsFolderPos = pathToCL.rfind("Microsoft Visual Studio");
+  if (vsFolderPos != std::string::npos) {
+    return HASH_VERSION + pathToCL.substr(vsFolderPos);
+  }
+
   // TODO(m): Add things like executable file size too.
 
   // Get the version string for the compiler.
   // Just calling "cl.exe" will return the version information. Note, though, that the version
   // information is given on stderr.
   string_list_t version_args;
-  version_args += m_args[0];
+  version_args += pathToCL;
   const auto result = sys::run(version_args, true);
   if (result.std_err.empty()) {
     throw std::runtime_error("Unable to get the compiler version information string.");
