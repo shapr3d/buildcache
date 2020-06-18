@@ -24,8 +24,10 @@
 #include <config/configuration.hpp>
 #include <sys/sys_utils.hpp>
 
+#include <codecvt>
 #include <cstdlib>
 #include <fstream>
+#include <locale>
 #include <stdexcept>
 
 namespace bcache {
@@ -117,11 +119,25 @@ void msvc_wrapper_t::resolve_args() {
   m_resolved_args.clear();
   for (const auto& arg : m_args) {
     if (arg.substr(0, 1) == "@") {
-      std::ifstream response_file(arg.substr(1));
-      if (response_file.is_open()) {
-        std::string line;
-        while (std::getline(response_file, line)) {
-          m_resolved_args += string_list_t::split_args(line);
+      std::ifstream file(arg.substr(1));
+      if (file.is_open()) {
+        int byte0 = file.get();
+        int byte1 = file.get();
+        if ((byte0 == 0xff && byte1 == 0xfe) || (byte0 == 0xfe && byte1 == 0xff)) {
+          file.close();
+          std::wifstream wfile(arg.substr(1), std::ios::binary);
+          wfile.imbue(std::locale(wfile.getloc(),
+                                  new std::codecvt_utf16<wchar_t, 0x10ffff, std::consume_header>));
+          std::wstring wline;
+          while (std::getline(wfile, wline)) {
+            m_resolved_args += string_list_t::split_args(ucs2_to_utf8(wline));
+          }
+        } else {
+          file.seekg(0);
+          std::string line;
+          while (std::getline(file, line)) {
+            m_resolved_args += string_list_t::split_args(line);
+          }
         }
       }
     } else {
