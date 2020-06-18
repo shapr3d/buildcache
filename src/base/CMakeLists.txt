@@ -26,6 +26,8 @@ set(BASE_SRC
   env_utils.hpp
   file_utils.cpp
   file_utils.hpp
+  file_tracking.hpp
+  file_tracking.cpp
   hasher.cpp
   hasher.hpp
   lock_file.cpp

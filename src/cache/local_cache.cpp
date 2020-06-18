@@ -49,6 +49,7 @@
 #include <base/compressor.hpp>
 #include <base/debug_utils.hpp>
 #include <base/file_utils.hpp>
+#include <base/file_tracking.hpp>
 #include <base/serializer_utils.hpp>
 #include <config/configuration.hpp>
 #include <sys/perf_utils.hpp>
@@ -368,6 +369,10 @@ void local_cache_t::get_file(const hasher_t::hash_t& hash,
   } else {
     file::copy(source_path, target_path);
   }
+
+  file::resume_tracking();
+  file::force_register_write(target_path);
+  file::suspend_tracking();
 }
 
 void local_cache_t::perform_housekeeping() {

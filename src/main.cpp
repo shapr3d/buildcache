@@ -19,6 +19,7 @@
 
 #include <base/debug_utils.hpp>
 #include <base/string_list.hpp>
+#include <base/file_tracking.hpp>
 #include <base/unicode_utils.hpp>
 #include <cache/local_cache.hpp>
 #include <config/configuration.hpp>
@@ -360,7 +361,8 @@ std::unique_ptr<bcache::program_wrapper_t> find_suitable_wrapper(
   if (!bcache::config::disable()) {
     bcache::perf::report();
   }
-
+   
+  bcache::file::resume_tracking();
   std::exit(return_code);
 }
 
@@ -390,6 +392,9 @@ void print_help(const char* program_name) {
 
 int main(int argc, const char** argv) {
   try {
+    bcache::file::find_tracking_module();
+    bcache::file::suspend_tracking();
+
     // Initialize the configuration.
     bcache::config::init();
 

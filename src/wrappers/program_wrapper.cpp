@@ -22,6 +22,7 @@
 #include <base/compressor.hpp>
 #include <base/debug_utils.hpp>
 #include <base/hasher.hpp>
+#include <base/file_tracking.hpp>
 #include <cache/cache_entry.hpp>
 #include <config/configuration.hpp>
 #include <sys/perf_utils.hpp>
@@ -87,9 +88,11 @@ bool program_wrapper_t::handle_command(int& return_code) {
     hasher_t hasher;
 
     // Hash the preprocessed file contents.
+    file::resume_tracking();
     PERF_START(PREPROCESS);
     hasher.update(preprocess_source());
     PERF_STOP(PREPROCESS);
+    file::suspend_tracking();
 
     // Hash the (filtered) command line flags and environment variables.
     PERF_START(FILTER_ARGS);
