@@ -147,9 +147,9 @@ public:
     for (auto arg : m_args) {
       const auto escaped_arg = escape ? escape_arg(arg) : arg;
       if (result.empty()) {
-        result = result + escaped_arg;
+        result += escaped_arg;
       } else {
-        result = result + separator + escaped_arg;
+        result += (separator + escaped_arg);
       }
     }
     return result;
@@ -223,20 +223,46 @@ public:
 private:
   static std::string escape_arg(const std::string& arg) {
     std::string escaped_arg;
+    bool needs_quotes = false;
 
+#ifdef _WIN32
+    // These escaping rules try to match parsing rules of Windows programs, e.g. as outlined here: 
+    // http://www.windowsinspired.com/how-a-windows-programs-splits-its-command-line-into-individual-arguments/
+    // "[..] backslashes are interpreted literally (except when they precede a double quote character)".
+    int backslashes = 0;
+    for (auto c : arg) {
+      if (c == '\\') {
+        ++backslashes;
+      } else { 
+        if (c == '\"') {
+          for (int i = 0; i <= backslashes; ++i) {
+            escaped_arg += '\\';
+          }
+        }
+        backslashes = 0;
+      }
+
+      escaped_arg += c;
+
+      if (c == ' ' || c == '\t') {
+        needs_quotes = true;
+      }
+    }
+
+    if (needs_quotes) {
+      for (int i = 0; i < backslashes; ++i) {
+        escaped_arg += '\\';
+      }
+    }
+
+#else
     // These escaping rules try to match the most common Un*x shell conventions, e.g. as outlined
     // here: http://faculty.salina.k-state.edu/tim/unix_sg/shell/metachar.html
-    auto needs_quotes = false;
     for (auto c : arg) {
       if (c == '"') {
         escaped_arg += "\\\"";
       } else if (c == '\\') {
-#ifdef _WIN32
-        // On Windows a backslash has semantic meaning and does not require escaping.
-        escaped_arg += c;
-#else
         escaped_arg += "\\\\";
-#endif
       } else if (c == '$') {
         escaped_arg += "\\$";
         needs_quotes = true;
@@ -251,6 +277,7 @@ private:
         escaped_arg += c;
       }
     }
+#endif
 
     // Do we need to surround with quotes?
     if (needs_quotes) {
