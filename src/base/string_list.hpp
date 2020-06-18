@@ -20,9 +20,21 @@
 #ifndef BUILDCACHE_STRING_LIST_HPP_
 #define BUILDCACHE_STRING_LIST_HPP_
 
+#include <base/unicode_utils.hpp>
+
 #include <initializer_list>
 #include <string>
 #include <vector>
+
+#if _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <shellapi.h>
+#undef STRICT
+#undef ERROR
+#undef min
+#undef max
+#endif
 
 namespace bcache {
 class string_list_t {
@@ -75,6 +87,15 @@ public:
   static string_list_t split_args(const std::string& cmd) {
     string_list_t args;
 
+#ifdef _WIN32
+    std::wstring wcmd = utf8_to_ucs2(cmd);
+    int argc;
+    wchar_t** argv = CommandLineToArgvW(wcmd.data(), &argc);
+    for (int i = 0; i < argc; ++i) {
+      args += ucs2_to_utf8(argv[i]);
+    }
+
+#else
     std::string arg;
     auto is_inside_quote = false;
     auto has_arg = false;
@@ -111,6 +132,7 @@ public:
       args += unescape_arg(arg);
     }
 
+#endif
     return args;
   }
 
