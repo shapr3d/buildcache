@@ -20,9 +20,21 @@
 #ifndef BUILDCACHE_STRING_LIST_HPP_
 #define BUILDCACHE_STRING_LIST_HPP_
 
+#include <base/unicode_utils.hpp>
+
 #include <initializer_list>
 #include <string>
 #include <vector>
+
+#if _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <shellapi.h>
+#undef STRICT
+#undef ERROR
+#undef min
+#undef max
+#endif
 
 namespace bcache {
 class string_list_t {
@@ -75,6 +87,15 @@ public:
   static string_list_t split_args(const std::string& cmd) {
     string_list_t args;
 
+#ifdef _WIN32
+    std::wstring wcmd = utf8_to_ucs2(cmd);
+    int argc;
+    wchar_t** argv = CommandLineToArgvW(wcmd.data(), &argc);
+    for (int i = 0; i < argc; ++i) {
+      args += ucs2_to_utf8(argv[i]);
+    }
+
+#else
     std::string arg;
     auto is_inside_quote = false;
     auto has_arg = false;
@@ -111,6 +132,7 @@ public:
       args += unescape_arg(arg);
     }
 
+#endif
     return args;
   }
 
@@ -125,9 +147,9 @@ public:
     for (auto arg : m_args) {
       const auto escaped_arg = escape ? escape_arg(arg) : arg;
       if (result.empty()) {
-        result = result + escaped_arg;
+        result += escaped_arg;
       } else {
-        result = result + separator + escaped_arg;
+        result += (separator + escaped_arg);
       }
     }
     return result;
@@ -201,20 +223,46 @@ public:
 private:
   static std::string escape_arg(const std::string& arg) {
     std::string escaped_arg;
+    bool needs_quotes = false;
 
+#ifdef _WIN32
+    // These escaping rules try to match parsing rules of Windows programs, e.g. as outlined here: 
+    // http://www.windowsinspired.com/how-a-windows-programs-splits-its-command-line-into-individual-arguments/
+    // "[..] backslashes are interpreted literally (except when they precede a double quote character)".
+    int backslashes = 0;
+    for (auto c : arg) {
+      if (c == '\\') {
+        ++backslashes;
+      } else { 
+        if (c == '\"') {
+          for (int i = 0; i <= backslashes; ++i) {
+            escaped_arg += '\\';
+          }
+        }
+        backslashes = 0;
+      }
+
+      escaped_arg += c;
+
+      if (c == ' ' || c == '\t') {
+        needs_quotes = true;
+      }
+    }
+
+    if (needs_quotes) {
+      for (int i = 0; i < backslashes; ++i) {
+        escaped_arg += '\\';
+      }
+    }
+
+#else
     // These escaping rules try to match the most common Un*x shell conventions, e.g. as outlined
     // here: http://faculty.salina.k-state.edu/tim/unix_sg/shell/metachar.html
-    auto needs_quotes = false;
     for (auto c : arg) {
       if (c == '"') {
         escaped_arg += "\\\"";
       } else if (c == '\\') {
-#ifdef _WIN32
-        // On Windows a backslash has semantic meaning and does not require escaping.
-        escaped_arg += c;
-#else
         escaped_arg += "\\\\";
-#endif
       } else if (c == '$') {
         escaped_arg += "\\$";
         needs_quotes = true;
@@ -229,6 +277,7 @@ private:
         escaped_arg += c;
       }
     }
+#endif
 
     // Do we need to surround with quotes?
     if (needs_quotes) {
