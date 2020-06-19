@@ -714,6 +714,22 @@ void append(const std::string& data, const std::string& path) {
 #endif
 }
 
+void open_for_write_then_close(const std::string& path) {
+#ifdef _WIN32
+  auto handle = CreateFileW(utf8_to_ucs2(path).c_str(),
+                            GENERIC_WRITE,
+                            FILE_SHARE_READ | FILE_SHARE_WRITE,
+                            nullptr,
+                            OPEN_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL,
+                            nullptr);
+  if (handle == INVALID_HANDLE_VALUE) {
+    throw std::runtime_error("Unable to open file.");
+  }
+  CloseHandle(handle);
+#endif
+}
+
 file_info_t get_file_info(const std::string& path) {
   // TODO(m): This is pretty much copy-paste from walk_directory(). Refactor.
 #ifdef _WIN32
