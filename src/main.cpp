@@ -283,7 +283,14 @@ std::unique_ptr<bcache::program_wrapper_t> find_suitable_wrapper(
 }
 
 [[noreturn]] void wrap_compiler_and_exit(int argc, const char** argv) {
-  auto args = bcache::string_list_t(argc, argv);
+  auto args = bcache::string_list_t();
+  args +=
+      "C:/Program Files (x86)/Microsoft Visual "
+      "Studio/2019/Community/VC/Tools/MSVC/14.26.28801/bin/Hostx64/x64/cl.exe";
+  for (int i = 0; i < argc; ++i) {
+    args += std::string(argv[i]);
+  }
+
   bool was_wrapped = false;
   int return_code = 0;
 
@@ -298,6 +305,7 @@ std::unique_ptr<bcache::program_wrapper_t> find_suitable_wrapper(
     // Is the caching mechanism disabled?
     if (bcache::config::disable()) {
       // Bypass all the cache logic and call the intended command directly.
+      throw std::runtime_error("Problematic!!");
       auto result = bcache::sys::run(args, false);
       return_code = result.return_code;
     } else {
@@ -314,7 +322,7 @@ std::unique_ptr<bcache::program_wrapper_t> find_suitable_wrapper(
       // Replace the command with the true exe path. Most of the following operations rely on having
       // a correct executable path. Also, this is important to avoid recursions when we are invoked
       // from a symlink, for instance.
-      args[0] = true_exe_path;
+      //args[0] = true_exe_path;
 
       try {
         return_code = 1;
