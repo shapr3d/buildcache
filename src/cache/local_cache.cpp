@@ -368,6 +368,13 @@ void local_cache_t::get_file(const hasher_t::hash_t& hash,
   } else {
     file::copy(source_path, target_path);
   }
+
+#ifdef _WIN32
+  // Open the target file for writing without doing any actual writes.
+  // This forces the registration of `target_path` as written by MSBuild
+  // FileTracker - i.e. adds an entry in *.write.*.tlog files.
+  file::append("", target_path);
+#endif
 }
 
 void local_cache_t::perform_housekeeping() {
